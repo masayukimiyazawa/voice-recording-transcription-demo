@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables — never commit real credentials
+.env
+.env.local
+.env.*.local
+
+# Vonage private key — never commit
+*.key
+*.pem
+private.key
+vonage_private_key*
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage/
+
+# OS / editor artifacts
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/settings.json
+
+# TypeScript cache
+*.tsbuildinfo
