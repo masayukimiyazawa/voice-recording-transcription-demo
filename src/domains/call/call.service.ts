@@ -32,6 +32,13 @@ export class CallService {
         loop: 1,
       } as any,
 
+      {
+        action: 'talk',
+        text: 'Thank you for calling. Please hold while we connect you. This call will be recorded.',
+        language: 'en-US',
+        loop: 1,
+      } as any,
+
       // connect と同時に通話全体を録音（endOnSilence を排除して切断を防ぐ）
       {
         action: 'record',

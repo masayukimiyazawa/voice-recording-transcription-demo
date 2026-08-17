@@ -6,6 +6,7 @@
 export interface NCCOTalkAction {
   action: 'talk';
   text: string;
+  language?: string;
   bargeIn?: boolean;
   loop?: number;
   level?: number;

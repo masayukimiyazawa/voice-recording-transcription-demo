@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vonage Call Proxy - ダッシュボード</title>
+    <title data-i18n="dashboard.title">Vonage Call Proxy - ダッシュボード</title>
     <style>
         * {
             margin: 0;
@@ -43,6 +43,27 @@
         
         .navbar button:hover {
             background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .navbar .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .navbar .lang-switcher select {
+            padding: 6px 10px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            font-size: 13px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            cursor: pointer;
+        }
+        
+        .navbar .lang-switcher select option {
+            background: #333;
+            color: white;
         }
         
         .container {
@@ -458,23 +479,31 @@
 </head>
 <body>
     <div class="navbar">
-        <h1>🎤 Vonage Call Proxy - ダッシュボード</h1>
-        <form method="POST" action="/logout" style="margin: 0;">
-            <button type="submit">ログアウト</button>
-        </form>
+        <h1 data-i18n="dashboard.nav_title">🎤 Vonage Call Proxy - ダッシュボード</h1>
+        <div class="nav-right">
+            <div class="lang-switcher">
+                <select id="langSelect" onchange="i18n.setLanguage(this.value)">
+                    <option value="ja">日本語</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+            <form method="POST" action="/logout" style="margin: 0;">
+                <button type="submit" data-i18n="dashboard.logout">ログアウト</button>
+            </form>
+        </div>
     </div>
     
     <div class="container">
-        <h2 class="dashboard-title">コール管理</h2>
+        <h2 class="dashboard-title" data-i18n="dashboard.call_management">コール管理</h2>
         
         <div class="card">
             <div class="destination-section">
-                <h2>📞 通話先電話番号</h2>
+                <h2 data-i18n="dashboard.destination_title">📞 通話先電話番号</h2>
                 
                 <!-- 読み込み中 -->
                 <div id="destinationLoading">
                     <div class="spinner"></div>
-                    <p>読み込み中...</p>
+                    <p data-i18n="dashboard.loading">読み込み中...</p>
                 </div>
                 
                 <!-- エラー表示 -->
@@ -485,36 +514,36 @@
                     <div class="destination-display">
                         <div>
                             <div id="destinationNumber" class="destination-number"></div>
-                            <div class="destination-label">設定された通話先</div>
+                            <div class="destination-label" data-i18n="dashboard.destination_label">設定された通話先</div>
                         </div>
-                        <button class="btn-primary" onclick="showDestinationForm()">編集</button>
+                        <button class="btn-primary" onclick="showDestinationForm()" data-i18n="dashboard.edit">編集</button>
                     </div>
                 </div>
                 
                 <!-- 入力フォーム -->
                 <div id="destinationFormWrapper" style="display:none;">
                     <div class="destination-form">
-                        <p id="destinationFormLabel" style="color:#666; margin-bottom:15px;">通話先電話番号を設定してください</p>
+                        <p id="destinationFormLabel" style="color:#666; margin-bottom:15px;" data-i18n="dashboard.destination_form_label">通話先電話番号を設定してください</p>
                         <form id="destinationForm" onsubmit="saveDestination(event)">
                             <div class="form-group">
-                                <label for="phoneNumber">電話番号（国際形式 +から始まる）</label>
+                                <label for="phoneNumber" data-i18n="dashboard.phone_label">電話番号（国際形式 +から始まる）</label>
                                 <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="+81901234567" required>
-                                <small>例: +81901234567</small>
+                                <small data-i18n="dashboard.phone_example">例: +81901234567</small>
                             </div>
                             <div id="destinationFormMsg" style="display:none; margin-bottom:10px;"></div>
                             <div class="button-group">
-                                <button type="submit" class="btn-primary">保存</button>
-                                <button type="button" class="btn-secondary" onclick="hideDestinationForm()">キャンセル</button>
+                                <button type="submit" class="btn-primary" data-i18n="dashboard.save">保存</button>
+                                <button type="button" class="btn-secondary" onclick="hideDestinationForm()" data-i18n="dashboard.cancel">キャンセル</button>
                             </div>
                         </form>
                     </div>
                 </div>
             </div>
             
-            <h2>📋 通話履歴</h2>
+            <h2 data-i18n="dashboard.call_history">📋 通話履歴</h2>
             <div id="callHistory" class="loading">
                 <div class="spinner"></div>
-                <p>読み込み中...</p>
+                <p data-i18n="dashboard.loading">読み込み中...</p>
             </div>
         </div>
     </div>
@@ -523,14 +552,17 @@
     <div id="transcriptModal" class="transcript-modal" onclick="closeTranscriptModal(event)">
         <div class="transcript-modal-content">
             <div class="transcript-modal-header">
-                <h3>📝 文字起こし</h3>
+                <h3 data-i18n="dashboard.transcript_modal_title">📝 文字起こし</h3>
                 <button class="transcript-close" onclick="document.getElementById('transcriptModal').classList.remove('active')">×</button>
             </div>
             <div id="transcriptBody"></div>
         </div>
     </div>
     
+    <script src="/js/i18n.js"></script>
     <script>
+        document.getElementById('langSelect').value = i18n.currentLang;
+
         async function loadDestination() {
             try {
                 const response = await fetch('/api/destination');
@@ -542,7 +574,7 @@
                 if (phoneNumber) {
                     document.getElementById('destinationNumber').textContent = phoneNumber;
                     document.getElementById('destinationDisplay').style.display = 'block';
-                    document.getElementById('destinationFormLabel').textContent = '電話番号を変更する';
+                    document.getElementById('destinationFormLabel').textContent = i18n.t('dashboard.destination_form_change');
                 } else {
                     document.getElementById('destinationFormWrapper').style.display = 'block';
                 }
@@ -550,7 +582,7 @@
                 document.getElementById('destinationLoading').style.display = 'none';
                 const errEl = document.getElementById('destinationError');
                 errEl.className = 'error-message';
-                errEl.textContent = '通話先の読み込みに失敗しました: ' + error.message;
+                errEl.textContent = i18n.t('dashboard.destination_load_error') + error.message;
                 errEl.style.display = 'block';
             }
         }
@@ -565,7 +597,6 @@
             document.getElementById('destinationFormWrapper').style.display = 'none';
             document.getElementById('destinationFormMsg').style.display = 'none';
             document.getElementById('destinationForm').reset();
-            // 設定済みなら表示に戻す
             if (document.getElementById('destinationNumber').textContent) {
                 document.getElementById('destinationDisplay').style.display = 'block';
             }
@@ -590,24 +621,23 @@
                     
                     const msgEl = document.getElementById('destinationFormMsg');
                     msgEl.className = 'success-message';
-                    msgEl.textContent = '通話先電話番号を設定しました';
+                    msgEl.textContent = i18n.t('dashboard.destination_saved');
                     msgEl.style.display = 'block';
                     setTimeout(() => { msgEl.style.display = 'none'; }, 3000);
                 } else {
                     const msgEl = document.getElementById('destinationFormMsg');
                     msgEl.className = 'error-message';
-                    msgEl.textContent = data.error || '設定に失敗しました';
+                    msgEl.textContent = data.error || i18n.t('dashboard.destination_save_error');
                     msgEl.style.display = 'block';
                 }
             } catch (error) {
                 const msgEl = document.getElementById('destinationFormMsg');
                 msgEl.className = 'error-message';
-                msgEl.textContent = '通話先の設定に失敗しました: ' + error.message;
+                msgEl.textContent = i18n.t('dashboard.destination_save_fail') + error.message;
                 msgEl.style.display = 'block';
             }
         }
 
-        // 文字起こしデータをインデックスで管理（onclick属性にJSONを直接埋め込まないため）
         const transcriptionStore = [];
 
         async function loadCallHistory(page = 1) {
@@ -616,46 +646,43 @@
                 const data = await response.json();
                 const callHistory = document.getElementById('callHistory');
 
-                // API は { recordings, total, page, limit } を返す
                 const rows = data.recordings || data.data || [];
                 const total = data.total || 0;
                 const limit = data.limit || 10;
                 const totalPages = Math.ceil(total / limit);
 
-                transcriptionStore.length = 0; // リセット
+                transcriptionStore.length = 0;
 
                 if (rows.length > 0) {
                     let html = `
                         <table>
                             <thead>
                                 <tr>
-                                    <th>日時</th>
-                                    <th>発信元</th>
-                                    <th>宛先</th>
-                                    <th>録音</th>
-                                    <th>文字起こし</th>
+                                    <th>${i18n.t('dashboard.table_date')}</th>
+                                    <th>${i18n.t('dashboard.table_from')}</th>
+                                    <th>${i18n.t('dashboard.table_to')}</th>
+                                    <th>${i18n.t('dashboard.table_recording')}</th>
+                                    <th>${i18n.t('dashboard.table_transcript')}</th>
                                 </tr>
                             </thead>
                             <tbody>
                     `;
                     rows.forEach((call, idx) => {
-                        const timestamp = new Date(call.createdAt || call.timestamp).toLocaleString('ja-JP');
+                        const timestamp = new Date(call.createdAt || call.timestamp).toLocaleString(i18n.currentLang === 'ja' ? 'ja-JP' : 'en-US');
                         const source = call.callerId || 'N/A';
                         const dest = call.destinationId || 'N/A';
                         const recordingLink = call.recordingUrl
-                            ? `<a href="/api/recordings/${call.conversationUuid}/download" class="action-btn" target="_blank">ダウンロード</a>`
+                            ? `<a href="/api/recordings/${call.conversationUuid}/download" class="action-btn" target="_blank">${i18n.t('dashboard.download')}</a>`
                             : '<span style="color: #999;">-</span>';
 
-                        // 文字起こしデータをstoreに保存してインデックスで参照
                         transcriptionStore[idx] = call.transcription || null;
                         let transcription;
                         if (call.transcription?.utterances?.length > 0 || call.transcription?.text) {
                             const hasDialogue = call.transcription?.utterances?.length > 0;
                             const icon = hasDialogue ? '💬' : '📄';
-                            transcription = `<button class="transcript-badge" onclick="showTranscriptByIndex(${idx})">${icon} 表示</button>`;
+                            transcription = `<button class="transcript-badge" onclick="showTranscriptByIndex(${idx})">${icon} ${i18n.t('dashboard.transcript_view').replace('💬 ', '')}</button>`;
                         } else if (call.transcription) {
-                            // utterancesなし・textなし → 再取得ボタン
-                            transcription = `<button class="transcript-badge" style="background:#999" onclick="retranscribe('${call.conversationUuid}', ${idx}, this)">🔄 再取得</button>`;
+                            transcription = `<button class="transcript-badge" style="background:#999" onclick="retranscribe('${call.conversationUuid}', ${idx}, this)">${i18n.t('dashboard.transcript_retranscribe')}</button>`;
                         } else {
                             transcription = '-';
                         }
@@ -676,14 +703,14 @@
                     callHistory.innerHTML = `
                         <div class="empty-state">
                             <div class="empty-state-icon">📭</div>
-                            <div class="empty-state-text">通話履歴がありません</div>
-                            <p style="color: #999; font-size: 14px;">新しい通話が記録されると、ここに表示されます</p>
+                            <div class="empty-state-text">${i18n.t('dashboard.empty_title')}</div>
+                            <p style="color: #999; font-size: 14px;">${i18n.t('dashboard.empty_desc')}</p>
                         </div>
                     `;
                 }
             } catch (error) {
                 document.getElementById('callHistory').innerHTML =
-                    '<div class="error-message">通話履歴の読み込みに失敗しました: ' + error.message + '</div>';
+                    `<div class="error-message">${i18n.t('dashboard.history_load_error')}${error.message}</div>`;
             }
         }
 
@@ -697,10 +724,9 @@
                 const response = await fetch(`/api/recordings/${conversationUuid}/retranscribe`, { method: 'POST' });
                 const data = await response.json();
                 if (data.ok) {
-                    btn.textContent = '💬 表示';
+                    btn.textContent = i18n.t('dashboard.transcript_view');
                     btn.style.background = '';
                     btn.onclick = () => showTranscriptByIndex(idx);
-                    // ストアを更新するためにページをリロード
                     setTimeout(() => loadCallHistory(), 500);
                 } else {
                     btn.textContent = '❌';
@@ -718,7 +744,6 @@
             if (transcription.utterances?.length > 0) {
                 showTranscript(transcription.utterances);
             } else if (transcription.text) {
-                // utterancesがない古いデータは単純なテキスト表示
                 showTranscriptText(transcription.text);
             }
         }
@@ -734,16 +759,16 @@
 
             let html = `
                 <div class="transcript-speakers-header">
-                    <span class="sp0">🟦 発信者 (左側)</span>
-                    <span class="sp1">着信者 (右側) 🟧</span>
+                    <span class="sp0">${i18n.t('dashboard.speakers_header_caller')}</span>
+                    <span class="sp1">${i18n.t('dashboard.speakers_header_callee')}</span>
                 </div>
             `;
 
             utterances.forEach(u => {
                 const secs = Math.floor((u.timestamp || 0) / 1000);
                 const timeStr = `${Math.floor(secs/60).toString().padStart(2,'0')}:${(secs%60).toString().padStart(2,'0')}`;
-                const label = u.speaker === 0 ? '発信者' : '着信者';
-                const initial = u.speaker === 0 ? '発' : '着';
+                const label = u.speaker === 0 ? i18n.t('dashboard.speaker_caller') : i18n.t('dashboard.speaker_callee');
+                const initial = u.speaker === 0 ? i18n.t('dashboard.speaker_caller_initial') : i18n.t('dashboard.speaker_callee_initial');
                 html += `
                     <div class="utterance speaker-${u.speaker}">
                         <div class="speaker-avatar">${initial}</div>

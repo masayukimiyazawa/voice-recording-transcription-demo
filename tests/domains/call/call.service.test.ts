@@ -5,6 +5,7 @@
 import '../../setup.js';
 import { CallService } from '../../../src/domains/call/call.service.js';
 import { DestinationRepository } from '../../../src/domains/destination/destination.repository.js';
+import type { NCCOTalkAction } from '../../../src/domains/call/call.types.js';
 
 jest.mock('../../../src/domains/destination/destination.repository.js');
 
@@ -32,7 +33,7 @@ describe('Call Service', () => {
       expect(result.ncco.length).toBeGreaterThan(0);
     });
 
-    test('should include talk action with greeting', async () => {
+    test('should include talk actions with greeting in Japanese and English', async () => {
       mockDestinationRepository.getCurrentDestination.mockResolvedValue({
         phoneNumber: '+1234567890',
         createdAt: new Date(),
@@ -41,9 +42,16 @@ describe('Call Service', () => {
 
       const result = await callService.generateNCCO('test-conversation-uuid', '+0987654321', 'https://example.com');
 
-      const talkAction = result.ncco.find((action: any) => action.action === 'talk');
-      expect(talkAction).toBeDefined();
-      expect((talkAction as any).text).toBeDefined();
+      const talkActions = result.ncco.filter((action: any) => action.action === 'talk') as NCCOTalkAction[];
+      expect(talkActions.length).toBe(2);
+      
+      // Japanese greeting
+      expect(talkActions[0].text).toContain('お電話ありがとうございます');
+      expect(talkActions[0].language).toBe('ja-JP');
+      
+      // English greeting
+      expect(talkActions[1].text).toContain('Thank you for calling');
+      expect(talkActions[1].language).toBe('en-US');
     });
 
     test('should include record action with split audio', async () => {
@@ -72,7 +80,7 @@ describe('Call Service', () => {
 
       const connectAction = result.ncco.find((action: any) => action.action === 'connect');
       expect(connectAction).toBeDefined();
-      // + は Vonage API 渡前に除去される
+      // + は Vonage API に渡す前に除去される
       expect((connectAction as any).endpoint[0].number).toBe('1234567890');
     });
 
