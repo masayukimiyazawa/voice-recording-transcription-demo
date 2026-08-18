@@ -34,7 +34,7 @@ const recordingSchema = new Schema<IRecording>(
     recordingUuid: { type: String, required: true },
     callerId: { type: String, required: true },
     destinationId: { type: String, required: true },
-    recordingUrl: { type: String, required: true },
+    recordingUrl: { type: String, default: '' },
     status: {
       type: String,
       enum: ['pending', 'completed', 'failed'],

@@ -149,6 +149,9 @@
                 >
             </div>
             
+            <!-- 言語選択をフォームに追加 -->
+            <input type="hidden" id="language" name="language" value="en">
+            
             <button type="submit" class="btn" data-i18n="login.submit">ログイン</button>
         </form>
     </div>
@@ -156,6 +159,13 @@
     <script src="/js/i18n.js"></script>
     <script>
         document.getElementById('langSelect').value = i18n.currentLang;
+        // hiddenフィールドもページ読み込み時にドロップダウンと同期
+        document.getElementById('language').value = i18n.currentLang;
+        
+        // 言語選択が変更されたとき、hiddenフィールドに値を設定
+        document.getElementById('langSelect').addEventListener('change', function() {
+            document.getElementById('language').value = this.value;
+        });
 
         const urlParams = new URLSearchParams(window.location.search);
         const error = urlParams.get('error');

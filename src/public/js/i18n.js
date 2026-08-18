@@ -20,6 +20,7 @@ const translations = {
     'dashboard.save': '保存',
     'dashboard.cancel': 'キャンセル',
     'dashboard.call_history': '📋 通話履歴',
+    'dashboard.refresh': '🔄 更新',
     'dashboard.transcript_modal_title': '📝 文字起こし',
     'dashboard.destination_form_change': '電話番号を変更する',
     'dashboard.destination_load_error': '通話先の読み込みに失敗しました: ',
@@ -65,6 +66,7 @@ const translations = {
     'dashboard.save': 'Save',
     'dashboard.cancel': 'Cancel',
     'dashboard.call_history': '📋 Call History',
+    'dashboard.refresh': '🔄 Refresh',
     'dashboard.transcript_modal_title': '📝 Transcript',
     'dashboard.destination_form_change': 'Change phone number',
     'dashboard.destination_load_error': 'Failed to load destination: ',
@@ -105,6 +107,12 @@ class I18n {
     this.currentLang = lang;
     localStorage.setItem('language', lang);
     this.applyTranslations();
+    // サーバーのセッション言語も同期更新（文字起こし言語に反映される）
+    fetch('/api/language', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ language: lang }),
+    }).catch(() => {});
   }
 
   applyTranslations() {

@@ -20,6 +20,7 @@ import { TranscriptionController } from './domains/recording/transcription.contr
 import { PortalController } from './domains/portal/portal.controller.js';
 import { PortalService } from './domains/portal/portal.service.js';
 import { DashboardController } from './domains/portal/dashboard.controller.js';
+import { SettingsRepository } from './domains/settings/settings.repository.js';
 import { authMiddleware } from './middleware/auth.middleware.js';
 
 // Get the base directory path
@@ -32,7 +33,8 @@ export function createApp(): Express {
   // Initialize domain services and controllers
   const destinationRepository = new DestinationRepository();
   const recordingRepository = new RecordingRepository();
-  const callService = new CallService(destinationRepository);
+  const settingsRepository = new SettingsRepository();
+  const callService = new CallService(destinationRepository, settingsRepository);
   const recordingService = new RecordingService(recordingRepository);
   const transcriptionService = new TranscriptionService(recordingRepository);
   const callController = new CallController(callService, recordingService);
@@ -41,7 +43,7 @@ export function createApp(): Express {
   const recordingController = new RecordingController(recordingRepository);
   const transcriptionController = new TranscriptionController(transcriptionService);
   const portalService = new PortalService();
-  const portalController = new PortalController(portalService);
+  const portalController = new PortalController(portalService, settingsRepository);
   const dashboardController = new DashboardController(recordingRepository);
 
   // View engine setup
@@ -155,6 +157,11 @@ export function createApp(): Express {
   // Dashboard route (authenticated)
   app.get('/dashboard', authMiddleware, (req: Request, res: Response, _next: NextFunction) => {
     dashboardController.renderDashboard(req, res);
+  });
+
+  // Language update route (authenticated)
+  app.put('/api/language', authMiddleware, (req: Request, res: Response, next: NextFunction) => {
+    portalController.updateLanguage(req, res).catch(next);
   });
 
   // Error handling middleware

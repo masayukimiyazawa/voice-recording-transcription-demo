@@ -194,6 +194,32 @@
             margin-top: 5px;
         }
         
+        .call-history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .call-history-header h2 {
+            margin-bottom: 0;
+        }
+
+        .btn-refresh {
+            padding: 6px 14px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.3s;
+        }
+
+        .btn-refresh:hover {
+            background: #764ba2;
+        }
+
         .pagination {
             margin-top: 20px;
             display: flex;
@@ -540,7 +566,10 @@
                 </div>
             </div>
             
-            <h2 data-i18n="dashboard.call_history">📋 通話履歴</h2>
+            <div class="call-history-header">
+                <h2 data-i18n="dashboard.call_history">📋 通話履歴</h2>
+                <button class="btn-refresh" onclick="loadCallHistory()" data-i18n="dashboard.refresh">🔄 更新</button>
+            </div>
             <div id="callHistory" class="loading">
                 <div class="spinner"></div>
                 <p data-i18n="dashboard.loading">読み込み中...</p>
@@ -548,14 +577,14 @@
         </div>
     </div>
     
-    <!-- 文字起こし対話表示モーダル -->
-    <div id="transcriptModal" class="transcript-modal" onclick="closeTranscriptModal(event)">
+    <!-- 文字起こし対話表示モーダル（ブラウザ自動翻訳を無効化） -->
+    <div id="transcriptModal" class="transcript-modal" onclick="closeTranscriptModal(event)" translate="no">
         <div class="transcript-modal-content">
             <div class="transcript-modal-header">
                 <h3 data-i18n="dashboard.transcript_modal_title">📝 文字起こし</h3>
                 <button class="transcript-close" onclick="document.getElementById('transcriptModal').classList.remove('active')">×</button>
             </div>
-            <div id="transcriptBody"></div>
+            <div id="transcriptBody" translate="no"></div>
         </div>
     </div>
     
@@ -770,7 +799,7 @@
                 const label = u.speaker === 0 ? i18n.t('dashboard.speaker_caller') : i18n.t('dashboard.speaker_callee');
                 const initial = u.speaker === 0 ? i18n.t('dashboard.speaker_caller_initial') : i18n.t('dashboard.speaker_callee_initial');
                 html += `
-                    <div class="utterance speaker-${u.speaker}">
+                    <div class="utterance speaker-${u.speaker}" translate="no">
                         <div class="speaker-avatar">${initial}</div>
                         <div class="bubble-wrapper">
                             <div class="bubble">${escapeHtml(u.sentence)}</div>
@@ -787,7 +816,7 @@
         function showTranscriptText(text) {
             const modal = document.getElementById('transcriptModal');
             document.getElementById('transcriptBody').innerHTML =
-                `<div class="transcript-plain">${escapeHtml(text)}</div>`;
+                `<div class="transcript-plain" translate="no">${escapeHtml(text)}</div>`;
             modal.classList.add('active');
         }
 

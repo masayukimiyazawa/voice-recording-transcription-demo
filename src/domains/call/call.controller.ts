@@ -36,6 +36,7 @@ export class CallController {
     const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'localhost:3000';
     const baseUrl = process.env.WEBHOOK_URL || `${proto}://${host}`;
 
+    // 言語設定は DB から取得（Vonage webhook にはセッション Cookie がないため）
     const { ncco, destinationNumber } = await this.callService.generateNCCO(conversation_uuid, from, baseUrl);
 
     // 着信時点で発信元・宛先情報をDBに保存しておく（録音Webhookにはこの情報が含まれないため）
@@ -56,6 +57,11 @@ export class CallController {
     // Process the recording webhook
     const recording = await this.recordingService.handleRecordingWebhook(recordingData);
 
-    res.status(200).json({ status: 'received', recordingId: recording._id });
+    if (recording?.skipped) {
+      res.status(200).json({ status: 'skipped' });
+      return;
+    }
+
+    res.status(200).json({ status: 'received', recordingId: recording?._id });
   }
 }

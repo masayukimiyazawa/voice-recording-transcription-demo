@@ -4,10 +4,21 @@
 
 import { logger } from '../../shared/logger.js';
 import { DestinationRepository } from '../destination/destination.repository.js';
+import { SettingsRepository } from '../settings/settings.repository.js';
 import type { NCCOAction, IncomingCallRequest } from './call.types.js';
 
+const LANGUAGE_SETTING_KEY = 'language';
+
+const TTS_TEXT: Record<string, string> = {
+  'ja-JP': 'お電話ありがとうございます。ただいま担当者におつなぎします。このお電話は録音させていただきます。',
+  'en-US': 'Thank you for calling. Please hold while we connect you. This call will be recorded.',
+};
+
 export class CallService {
-  constructor(private destinationRepository: DestinationRepository) {}
+  constructor(
+    private destinationRepository: DestinationRepository,
+    private settingsRepository: SettingsRepository,
+  ) {}
 
   /**
    * Generate NCCO (Nexmo Call Control Objects) for incoming call
@@ -19,23 +30,21 @@ export class CallService {
       throw new Error('No destination number configured');
     }
 
+    // DB から言語設定を取得（Vonage webhook から呼ばれてもセッション不要）
+    const language = await this.settingsRepository.get(LANGUAGE_SETTING_KEY) || 'en-US';
+
     const recordingWebhookUrl = `${baseUrl}/event/recording`;
     const lvn = process.env.VONAGE_LVN || '';
     // Vonage Voice API は + なしの番号を要求する
     const destinationNumber = destination.phoneNumber.replace(/^\+/, '');
 
+    const ttsText = TTS_TEXT[language] || TTS_TEXT['en-US'];
+
     const ncco: NCCOAction[] = [
       {
         action: 'talk',
-        text: 'お電話ありがとうございます。ただいま担当者におつなぎします。このお電話は録音させていただきます。',
-        language: 'ja-JP',
-        loop: 1,
-      } as any,
-
-      {
-        action: 'talk',
-        text: 'Thank you for calling. Please hold while we connect you. This call will be recorded.',
-        language: 'en-US',
+        text: ttsText,
+        language: language,
         loop: 1,
       } as any,
 
@@ -51,7 +60,7 @@ export class CallService {
         transcription: {
           eventUrl: [`${baseUrl}/event/transcription`],
           eventMethod: 'POST',
-          language: 'ja-JP',
+          language: language,
           sentimentAnalysis: false,
         },
       } as any,
@@ -68,7 +77,7 @@ export class CallService {
       } as any,
     ];
 
-    logger.info('Generated NCCO', { conversationUuid, destinationNumber, recordingWebhookUrl, lvn, ncco: JSON.stringify(ncco) });
+    logger.info('Generated NCCO', { conversationUuid, destinationNumber, recordingWebhookUrl, lvn, language, ncco: JSON.stringify(ncco) });
 
     return { ncco, destinationNumber };
   }
