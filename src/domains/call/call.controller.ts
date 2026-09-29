@@ -6,6 +6,7 @@ import { Request, Response } from 'express';
 import { CallService } from './call.service.js';
 import { RecordingService } from '../recording/recording.service.js';
 import { ValidationError } from '../../shared/error.handler.js';
+import { config } from '../../shared/config.js';
 import { logger } from '../../shared/logger.js';
 
 export class CallController {
@@ -16,10 +17,14 @@ export class CallController {
 
   /**
    * Handle incoming call answer request
-   * GET /call/answer?conversation_uuid=...&from=...&to=...
+   * Vonage calls the answer URL as configured; it may be GET or POST, and a
+   * POST delivers the parameters in a form-encoded body rather than the query
+   * string, so both are accepted.
    */
   async answerCall(req: Request, res: Response): Promise<void> {
-    const { conversation_uuid, from } = req.query;
+    const params = { ...req.query, ...(req.body ?? {}) } as Record<string, unknown>;
+    const conversation_uuid = params.conversation_uuid;
+    const from = params.from;
 
     if (!conversation_uuid || typeof conversation_uuid !== 'string') {
       throw new ValidationError('Missing or invalid conversation_uuid');
@@ -31,10 +36,11 @@ export class CallController {
 
     logger.info('Answering call', { conversation_uuid, from });
 
-    // Cloudflare Tunnel / リバースプロキシ経由の公開URLを優先して使用
+    // WEBHOOK_URL is the source of truth for the public base URL; Cloudflare
+    // Tunnel / reverse-proxy headers are the fallback when it is unset.
     const proto = (req.headers['x-forwarded-proto'] as string) || req.protocol;
     const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'localhost:3000';
-    const baseUrl = process.env.WEBHOOK_URL || `${proto}://${host}`;
+    const baseUrl = config.publicBaseUrl || `${proto}://${host}`;
 
     // 言語設定は DB から取得（Vonage webhook にはセッション Cookie がないため）
     const { ncco, destinationNumber } = await this.callService.generateNCCO(conversation_uuid, from, baseUrl);

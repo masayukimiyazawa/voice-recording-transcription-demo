@@ -21,9 +21,10 @@ async function main(): Promise<void> {
     // Create Express app (MongoDB接続の成否に関わらずサーバーを先に起動)
     const app = createApp();
 
-    // Start server
-    const server = app.listen(config.port, () => {
-      logger.info(`Server listening on port ${config.port}`);
+    // Start server - bind to 0.0.0.0 for VCR compatibility
+    const port = parseInt(process.env.VCR_PORT || String(config.port), 10);
+    const server = app.listen(port, '0.0.0.0', () => {
+      logger.info(`Server listening on port ${port}`);
     });
 
     // MongoDB接続は非同期で試みる（失敗してもサーバーは継続）

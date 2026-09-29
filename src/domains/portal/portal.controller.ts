@@ -7,6 +7,7 @@ import { PortalService } from './portal.service.js';
 import { SettingsRepository } from '../settings/settings.repository.js';
 import { ValidationError } from '../../shared/error.handler.js';
 import { logger } from '../../shared/logger.js';
+import { LoginRateLimiter, clientKey } from '../../middleware/login.rate-limit.js';
 
 const LANGUAGE_SETTING_KEY = 'language';
 
@@ -14,10 +15,12 @@ export class PortalController {
   constructor(
     private portalService: PortalService,
     private settingsRepository: SettingsRepository,
+    private rateLimiter?: LoginRateLimiter,
   ) {}
 
   async login(req: Request, res: Response): Promise<void> {
     const { password, language } = req.body;
+    const key = clientKey(req);
 
     if (!password) {
       throw new ValidationError('Password is required');
@@ -27,9 +30,13 @@ export class PortalController {
 
     if (!isValid) {
       logger.warn('Invalid login attempt');
+      this.rateLimiter?.recordFailure(key);
       res.status(401).json({ error: 'Invalid password' });
       return;
     }
+
+    // 認証成功：该客户端的失败计数应当清零
+    this.rateLimiter?.reset(key);
 
     (req as any).session.authenticated = true;
     // ログイン時に言語設定をセッションに保存

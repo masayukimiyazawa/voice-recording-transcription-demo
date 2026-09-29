@@ -9,9 +9,11 @@ import { RecordingService } from '../../src/domains/recording/recording.service.
 import { TranscriptionService } from '../../src/domains/recording/transcription.service.js';
 import { RecordingRepository } from '../../src/domains/recording/recording.repository.js';
 import { DestinationRepository } from '../../src/domains/destination/destination.repository.js';
+import { SettingsRepository } from '../../src/domains/settings/settings.repository.js';
 
 jest.mock('../../src/domains/recording/recording.repository.js');
 jest.mock('../../src/domains/destination/destination.repository.js');
+jest.mock('../../src/domains/settings/settings.repository.js');
 
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
@@ -33,7 +35,7 @@ describe('End-to-End Call Flow', () => {
     mockRecordingRepo = new RecordingRepository() as jest.Mocked<RecordingRepository>;
     mockDestRepo = new DestinationRepository() as jest.Mocked<DestinationRepository>;
 
-    callService = new CallService(mockDestRepo);
+    callService = new CallService(mockDestRepo, new SettingsRepository());
     recordingService = new RecordingService(mockRecordingRepo);
     transcriptionService = new TranscriptionService(mockRecordingRepo);
   });

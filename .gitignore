@@ -15,6 +15,9 @@ dist/
 private.key
 vonage_private_key*
 
+# VCR configuration — never commit real credentials (only the real config)
+vcr.yml
+
 # Logs
 logs/
 *.log

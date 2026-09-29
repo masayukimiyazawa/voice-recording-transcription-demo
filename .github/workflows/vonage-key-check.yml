@@ -1,0 +1,127 @@
+name: Vonage Diagnostics
+
+# Two operational checks against the deployed instance:
+#
+#  1. Key check - the VCR platform injects a private key into the runtime. When
+#     the Vonage application key is rotated, that injected copy can go stale:
+#     every authenticated Vonage request then fails with 401 and recording /
+#     transcription downloads break with "Failed to fetch recording from
+#     Vonage".
+#  2. Voice configuration check - inbound calls ring and then drop when the
+#     voice capability is missing, a webhook is unroutable, or the app only
+#     answers GET while the VCR callback router POSTs. `vcr deploy` legitimately
+#     re-points the webhooks at VCR's own callback router, so that state is
+#     accepted; what is checked is whether calls can actually be served.
+
+on:
+  schedule:
+    # Daily at 09:00 UTC.
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/shared/key-fingerprint.ts'
+      - 'src/shared/webhook-expectations.ts'
+      - 'src/domains/diagnostics/**'
+      - 'vcr.yml'
+      - '.github/workflows/vonage-key-check.yml'
+
+jobs:
+  verify:
+    name: Verify deployed Vonage private key
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check that required secrets are configured
+        env:
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+          PORTAL_PASSWORD: ${{ secrets.PORTAL_PASSWORD }}
+        run: |
+          missing=0
+          for v in APP_BASE_URL PORTAL_PASSWORD; do
+            if [ -z "${!v}" ]; then
+              echo "::error::GitHub secret $v is not set"
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ] || exit 1
+
+      - name: Verify the deployed instance's key matches the registered key
+        env:
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+          PORTAL_PASSWORD: ${{ secrets.PORTAL_PASSWORD }}
+        run: |
+          set -euo pipefail
+          jar="$(mktemp)"
+
+          # Authenticate against the portal. The diagnostics endpoint is
+          # deliberately behind the session so it is not publicly probeable.
+          code=$(curl -sS -o /dev/null -w '%{http_code}' \
+            -c "$jar" -X POST "$APP_BASE_URL/login" \
+            -H 'Content-Type: application/x-www-form-urlencoded' \
+            --data-urlencode "password=$PORTAL_PASSWORD")
+          if [ "$code" != "302" ] && [ "$code" != "200" ]; then
+            echo "::error::Portal login failed (HTTP $code). Is PORTAL_PASSWORD up to date, or is the instance rate-limiting this runner?"
+            exit 1
+          fi
+
+          status=$(curl -sS -b "$jar" -o /tmp/key-check.json -w '%{http_code}' \
+            "$APP_BASE_URL/_/diagnostics/vonage-key")
+
+          echo "HTTP $status"
+          cat /tmp/key-check.json; echo
+
+          if [ "$status" != "200" ]; then
+            echo "::error::Vonage private key check FAILED."
+            echo "::error::The runtime private key no longer matches the key registered on the application."
+            echo "::error::Fix: re-register the key and sync it, e.g."
+            echo "::error::  vcr secret update --name VONAGE_PRIVATE_KEY --filename private.key"
+            echo "::error::  vcr deploy"
+            exit 1
+          fi
+
+          node -e '
+            const r = require("/tmp/key-check.json");
+            if (!r.ok || !r.keyMatches) {
+              console.error("::error::key check returned ok=" + r.ok + " keyMatches=" + r.keyMatches);
+              process.exit(1);
+            }
+            console.log("key matches:", r.privateKeyFingerprint, "(app " + r.applicationId + ")");
+          '
+
+      - name: Verify the voice configuration can serve calls
+        env:
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+          PORTAL_PASSWORD: ${{ secrets.PORTAL_PASSWORD }}
+        run: |
+          set -euo pipefail
+          jar="$(mktemp)"
+
+          code=$(curl -sS -o /dev/null -w '%{http_code}' \
+            -c "$jar" -X POST "$APP_BASE_URL/login" \
+            -H 'Content-Type: application/x-www-form-urlencoded' \
+            --data-urlencode "password=$PORTAL_PASSWORD")
+          if [ "$code" != "302" ] && [ "$code" != "200" ]; then
+            echo "::error::Portal login failed (HTTP $code)"
+            exit 1
+          fi
+
+          status=$(curl -sS -b "$jar" -o /tmp/webhook-check.json -w '%{http_code}' \
+            "$APP_BASE_URL/_/diagnostics/vonage-webhooks")
+
+          echo "HTTP $status"
+          cat /tmp/webhook-check.json; echo
+
+          if [ "$status" != "200" ]; then
+            echo "::error::The Vonage voice configuration cannot serve calls:"
+            node -e "const r=require('/tmp/webhook-check.json');(r.problems||[]).forEach(p=>console.log('::error::  - '+p))"
+            echo "::error::Inbound calls will ring and then drop."
+
+            exit 1
+          fi
+
+      - name: Clean up
+        if: always()
+        run: rm -f /tmp/key-check.json "$jar" 2>/dev/null || true

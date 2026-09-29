@@ -1,0 +1,67 @@
+project:
+  name: vonage-call-proxy
+instance:
+  name: dev
+  runtime: nodejs22
+  region: <YOUR_VCR_REGION>
+  application-id: "<YOUR_VONAGE_APPLICATION_ID>"
+  entrypoint: ["node", "dist/index.js"]
+  build-script: "./build.sh"
+  capabilities:
+    - voice
+  environment:
+    - name: NODE_ENV
+      value: "production"
+    - name: LOG_LEVEL
+      value: "warn"
+    - name: PORTAL_PASSWORD
+      secret: PORTAL_PASSWORD
+    - name: SESSION_SECRET
+      secret: SESSION_SECRET
+    - name: VONAGE_API_KEY
+      secret: VONAGE_API_KEY
+    - name: VONAGE_API_SECRET
+      secret: VONAGE_API_SECRET
+    - name: VONAGE_APPLICATION_ID
+      secret: VONAGE_APPLICATION_ID
+    - name: VONAGE_LVN
+      secret: VONAGE_LVN
+    - name: MONGODB_URI
+      secret: MONGODB_URI
+    - name: WEBHOOK_URL
+      value: "https://<YOUR_HOST>.<REGION>.runtime.vonage.cloud"
+    - name: VONAGE_PRIVATE_KEY
+      secret: VONAGE_PRIVATE_KEY
+  secrets:
+    - PORTAL_PASSWORD
+    - SESSION_SECRET
+    - VONAGE_API_KEY
+    - VONAGE_API_SECRET
+    - VONAGE_APPLICATION_ID
+    - VONAGE_LVN
+    - MONGODB_URI
+    - VONAGE_PRIVATE_KEY
+debug:
+  name: debugger
+  application-id: ""
+  environment:
+    - name: NODE_ENV
+      value: "development"
+    - name: LOG_LEVEL
+      value: "debug"
+    - name: PORTAL_PASSWORD
+      value: "<YOUR_PORTAL_PASSWORD>"
+    - name: SESSION_SECRET
+      value: "<YOUR_RANDOM_SESSION_SECRET>"
+    - name: VONAGE_API_KEY
+      value: ""
+    - name: VONAGE_API_SECRET
+      value: ""
+    - name: VONAGE_APPLICATION_ID
+      value: ""
+    - name: VONAGE_LVN
+      value: ""
+    - name: MONGODB_URI
+      value: ""
+  entrypoint: ["npx", "ts-node", "--esm", "src/index.ts"]
+  preserve-data: false

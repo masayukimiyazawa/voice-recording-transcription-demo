@@ -7,8 +7,23 @@ import { Request, Response, NextFunction } from 'express';
 import { authMiddleware } from '../../../src/middleware/auth.middleware.js';
 import { PortalController } from '../../../src/domains/portal/portal.controller.js';
 import { PortalService } from '../../../src/domains/portal/portal.service.js';
+import { SettingsRepository } from '../../../src/domains/settings/settings.repository.js';
+import { LoginRateLimiter } from '../../../src/middleware/login.rate-limit.js';
 
 jest.mock('../../../src/domains/portal/portal.service.js');
+jest.mock('../../../src/domains/settings/settings.repository.js');
+
+// Shared across the rate-limiting suite; reset between cases.
+const limiter = new LoginRateLimiter({
+  windowMs: 60_000,
+  maxFailures: 2,
+  baseLockoutMs: 60_000,
+  maxLockoutMs: 60_000,
+  globalMaxFailures: 0,
+  globalLockoutMs: 60_000,
+});
+
+afterAll(() => limiter.dispose());
 
 describe('authMiddleware', () => {
   let mockReq: Partial<Request> & { session?: any };
@@ -57,6 +72,66 @@ describe('authMiddleware', () => {
   });
 });
 
+describe('PortalController login rate limiting', () => {
+  let controller: PortalController;
+  let mockService: jest.Mocked<PortalService>;
+  let mockReq: Partial<Request> & { session?: any; ip?: string };
+  let mockRes: Partial<Response>;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    limiter.clear();
+    mockService = new PortalService() as jest.Mocked<PortalService>;
+    controller = new PortalController(mockService, new SettingsRepository(), limiter);
+
+    mockReq = { body: {}, session: {} as any, ip: '203.0.113.9' };
+    mockRes = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn().mockReturnThis(),
+      redirect: jest.fn().mockReturnThis(),
+      render: jest.fn().mockReturnThis(),
+    };
+  });
+
+  test('counts a failed attempt against the client', async () => {
+    mockReq.body = { password: 'wrong' };
+    mockService.validatePassword.mockResolvedValue(false);
+
+    await controller.login(mockReq as Request, mockRes as Response);
+
+    expect(limiter.check('203.0.113.9').remaining).toBe(1);
+  });
+
+  test('clears the counter after a successful login', async () => {
+    mockReq.body = { password: 'correct' };
+    mockService.validatePassword.mockResolvedValue(false);
+    await controller.login(mockReq as Request, mockRes as Response);
+
+    mockService.validatePassword.mockResolvedValue(true);
+    await controller.login(mockReq as Request, mockRes as Response);
+
+    expect(limiter.check('203.0.113.9').remaining).toBe(2);
+  });
+
+  test('locks the client out after repeated failures', async () => {
+    mockReq.body = { password: 'wrong' };
+    mockService.validatePassword.mockResolvedValue(false);
+
+    for (let i = 0; i < 2; i++) {
+      await controller.login(mockReq as Request, mockRes as Response);
+    }
+
+    expect(limiter.check('203.0.113.9').allowed).toBe(false);
+  });
+
+  test('does not count attempts that were never validated (missing password)', async () => {
+    mockReq.body = {};
+    await expect(controller.login(mockReq as Request, mockRes as Response)).rejects.toThrow();
+
+    expect(limiter.check('203.0.113.9').remaining).toBe(2);
+  });
+});
+
 describe('PortalController', () => {
   let controller: PortalController;
   let mockService: jest.Mocked<PortalService>;
@@ -66,7 +141,7 @@ describe('PortalController', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockService = new PortalService() as jest.Mocked<PortalService>;
-    controller = new PortalController(mockService);
+    controller = new PortalController(mockService, new SettingsRepository());
 
     mockReq = { body: {}, session: {} as any };
     mockRes = {

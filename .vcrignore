@@ -1,0 +1,25 @@
+# VCR ignore file - files not to include in deployment
+node_modules/
+dist/
+*.log
+.env
+.env.*
+private.key
+.vcr-cli
+*.md
+!README.md
+!README-jp.md
+tests/
+*.test.ts
+*.spec.ts
+jest.config.*
+AGENTS.md
+.git/
+.gitignore
+.DS_Store
+*.pptx
+doc/
+sdd-proxy-work/
+.kiro/
+.opencode/
+.github/

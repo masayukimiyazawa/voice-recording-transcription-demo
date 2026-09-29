@@ -34,9 +34,12 @@ export class CallService {
     const language = await this.settingsRepository.get(LANGUAGE_SETTING_KEY) || 'en-US';
 
     const recordingWebhookUrl = `${baseUrl}/event/recording`;
-    const lvn = process.env.VONAGE_LVN || '';
+    // Vonage Voice API は国番号接頭辞なしの数字のみを受け付ける。設定値に
+    // 空白や改行が混入したまま渡すと発信が失敗し通話が即時切断されるため、
+    // 常に正規化する。
+    const lvn = (process.env.VONAGE_LVN || '').trim().replace(/^\+/, '');
     // Vonage Voice API は + なしの番号を要求する
-    const destinationNumber = destination.phoneNumber.replace(/^\+/, '');
+    const destinationNumber = destination.phoneNumber.trim().replace(/^\+/, '');
 
     const ttsText = TTS_TEXT[language] || TTS_TEXT['en-US'];
 

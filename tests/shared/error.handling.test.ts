@@ -5,6 +5,7 @@
 import '../setup.js';
 import { Request, Response, NextFunction } from 'express';
 import { errorHandler, ValidationError, NotFoundError, UnauthorizedError } from '../../src/shared/error.handler.js';
+import { SettingsRepository } from '../../src/domains/settings/settings.repository.js';
 import { CallService } from '../../src/domains/call/call.service.js';
 import { DestinationRepository } from '../../src/domains/destination/destination.repository.js';
 import { RecordingController } from '../../src/domains/recording/recording.controller.js';
@@ -12,6 +13,7 @@ import { RecordingRepository } from '../../src/domains/recording/recording.repos
 
 jest.mock('../../src/domains/destination/destination.repository.js');
 jest.mock('../../src/domains/recording/recording.repository.js');
+jest.mock('../../src/domains/settings/settings.repository.js');
 
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
@@ -69,7 +71,7 @@ describe('CallService - NCCO edge cases', () => {
 
   beforeEach(() => {
     mockDestRepo = new DestinationRepository() as jest.Mocked<DestinationRepository>;
-    callService = new CallService(mockDestRepo);
+    callService = new CallService(mockDestRepo, new SettingsRepository());
   });
 
   test('should throw when no destination is configured', async () => {
