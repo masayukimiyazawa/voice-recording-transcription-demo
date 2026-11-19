@@ -107,7 +107,7 @@ cloudflared tunnel --url http://localhost:3000
 
 3. **Vonage Applicationの作成**（未作成の場合）:
    ```bash
-   vcr app create --voice --messages
+  vcr app create --voice --messages --name my-voice-messages-app
    ```
    Vonage Applicationが作成され、Private Keyがダウンロードされます。Application IDを控えておいてください。
 
@@ -142,34 +142,139 @@ cloudflared tunnel --url http://localhost:3000
    ```
    F5キーでブレークポイント付きデバッグを開始できます。
 
-### VCRへのデプロイ
+### VCRへのデプロイ（マニュアルオペレーション手引き）
 
-1. `vcr.yml` に本番用の値を設定:
-   - `instance.application-id`: Vonage Application ID
-   - `instance.region`: リージョン（`aws.euw1`, `aws.use1`, `aws.apse1`, `aws.apse2` など）
+VCR展開は以下の手順で実行します。すべての CLI コマンドはリポジトリルートで実行してください。
 
-2. デプロイ実行:
-   ```bash
-   npm run vcr:deploy
-   # または
-   vcr deploy
-   ```
+#### ステップ1: VCR CLI の設定（初回のみ）
 
-   以下が自動実行されます:
-   - Vonage ApplicationのWebhook自動設定
-   - アプリケーションのパッケージ化とアップロード
-   - ビルドスクリプトの実行
-   - インスタンスの起動
+```bash
+vcr configure
+```
+Vonage APIキー、APIシークレット、リージョン（例: `aws.apse1`）を入力します。認証情報は `~/.vcr-cli` に保存されます。
 
-3. デプロイ確認:
-   ```bash
-   vcr instance list
-   ```
+#### ステップ2: Vonage Application の作成（未作成の場合）
 
-4. ログの確認:
-   ```bash
-   vcr instance log --project-name vonage-call-proxy --instance-name dev --follow
-   ```
+```bash
+vcr app create --voice --messages --name <アプリケーション名>
+```
+例:
+```bash
+vcr app create --voice --messages --name vonage-call-proxy-dev
+```
+出力された **Application ID** を控えておきます（`vcr.yml` とシークレットに設定します）。
+
+#### ステップ3: `vcr.yml` の `application-id` と `WEBHOOK_URL` を更新
+
+`vcr.yml` を編集し、以下の2箇所を作成した Application ID とデプロイ先URLに書き換えます：
+
+```yaml
+instance:
+  application-id: "<作成したApplication ID>"
+  ...
+  environment:
+    - name: WEBHOOK_URL
+      value: "https://<インスタンス名>.apse1.runtime.vonage.cloud"
+```
+
+#### ステップ4: VCR シークレットを作成
+
+デプロイ前に、VCR にシークレットを登録します。`vcr.yml` の `instance.secrets` で定義されているすべてのシークレットを作成してください。
+
+```bash
+vcr secret create --name PORTAL_PASSWORD --value "<管理ポータルパスワード>"
+vcr secret create --name SESSION_SECRET --value "<セッションシークレット>"
+vcr secret create --name VONAGE_API_KEY --value "<Vonage APIキー>"
+vcr secret create --name VONAGE_API_SECRET --value "<Vonage APIシークレット>"
+vcr secret create --name VONAGE_APPLICATION_ID --value "<Application ID>"
+vcr secret create --name VONAGE_LVN --value "<Vonage仮想番号(E.164)>"
+vcr secret create --name MONGODB_URI --value "<MongoDB Atlas接続URI>"
+vcr secret create --name VONAGE_PRIVATE_KEY --filename ./private.key
+```
+
+**注意:** `--value` はシェル履歴に残るため、機密性の高い値は `--filename` でファイルから読み込むか、対話モード（`--value` を省略）で入力してください。`VONAGE_PRIVATE_KEY` は `--filename ./private.key` で秘密鍵ファイルを指定します。
+
+シークレット一覧の確認:
+```bash
+vcr secret list
+```
+
+#### ステップ5: `.env` の認証情報を更新
+
+`.env` の以下の項目を、VCR CLI の認証情報および作成した Application ID に合わせて更新します：
+
+| 変数 | 設定値の例 |
+|------|-----------|
+| `VONAGE_API_KEY` | VCR CLI 設定の `api_key` |
+| `VONAGE_API_SECRET` | VCR CLI 設定の `api_secret` |
+| `VONAGE_APPLICATION_ID` | ステップ2 で作成した Application ID |
+| `WEBHOOK_URL` | デプロイ先インスタンスの公開 URL |
+
+例:
+```
+VONAGE_API_KEY=c30214a9
+VONAGE_API_SECRET=AEs)tJ0H
+VONAGE_APPLICATION_ID=337ac060-a778-48b0-b07d-2d121ae3d9e5
+WEBHOOK_URL=https://neru-c30214a9-vonage-call-proxy-dev.apse1.runtime.vonage.cloud
+```
+
+#### ステップ6: デプロイ実行
+
+```bash
+npm run vcr:deploy
+# または
+vcr deploy
+```
+
+以下が自動実行されます:
+- プロジェクトの取得/作成
+- デプロイパラメータの検証
+- ソースコードのアップロードとパッケージ化
+- ビルドスクリプト（`build.sh`）の実行（TypeScriptコンパイル含む）
+- インスタンスの起動
+
+デプロイ完了後、以下の情報が表示されます:
+```
+Instance id: <インスタンスID>
+Instance service name: neru-<api-key>-vonage-call-proxy-dev
+Instance host address: https://neru-<api-key>-vonage-call-proxy-dev.apse1.runtime.vonage.cloud
+```
+
+#### ステップ7: Vonage Webhook の再適用（必要に応じて）
+
+`vcr deploy` 実行後、VCR が Vonage Application の voice Webhook を callback-router に書き戻す場合があります。デプロイ先インスタンスを直接指定するには、以下を実行します：
+
+```bash
+node scripts/apply-vonage-webhooks.mjs
+```
+
+401 エラーが出た場合は、`.env` の `VONAGE_API_KEY` / `VONAGE_API_SECRET` が VCR CLI の認証情報と一致しているか確認し、不一致であれば両方を揃えてから再実行してください。
+
+Webhook 設定の検証のみ行う場合:
+```bash
+npm run vonage:webhooks:check
+```
+
+#### ステップ8: VCR シークレットの整合確認（APIキー変更時）
+
+`.env` や VCR CLI の認証情報を変更した場合、VCR 側のシークレットも更新してデプロイ済みインスタンスの環境変数と整合を取ります：
+
+```bash
+vcr secret update --name VONAGE_API_KEY --value "<新しいAPIキー>"
+vcr secret update --name VONAGE_API_SECRET --value "<新しいAPIシークレット>"
+```
+
+シークレットを更新後は、インスタンスを再デプロイするか、`vcr instance` コマンドで環境変数の反映を確認してください。
+
+#### ステップ9: デプロイ確認とログ
+
+```bash
+vcr instance list
+```
+
+```bash
+vcr instance log --project-name vonage-call-proxy --instance-name dev --follow
+```
 
 ### 本番用の別設定ファイル
 
@@ -205,9 +310,48 @@ VCRは以下の環境変数を自動的に注入します:
 
 アプリケーションは `VCR_PORT` でリッスンし、`0.0.0.0` にバインドする必要があります。
 
-### シークレット管理
+### シークレット管理（CLI 操作）
 
-シークレットは `vcr.yml` の `instance.secrets` で定義し、`instance.environment` で `secret: SECRET_NAME` として参照します。デプロイ前にVCRダッシュボードまたはCLIで設定してください。
+シークレットは `vcr.yml` の `instance.secrets` で定義し、`instance.environment` で `secret: SECRET_NAME` として参照します。デプロイ前に VCR CLI で登録してください。
+
+#### シークレットの新規作成
+
+```bash
+vcr secret create --name <シークレット名> --value "<シークレット値>"
+```
+
+秘密鍵などの多行値はファイルから読み込みます：
+```bash
+vcr secret create --name VONAGE_PRIVATE_KEY --filename ./private.key
+```
+
+#### シークレットの一覧表示
+
+```bash
+vcr secret list
+```
+
+#### シークレットの更新
+
+既存シークレットの値を変更する場合：
+```bash
+vcr secret update --name <シークレット名> --value "<新しい値>"
+```
+
+#### シークレットの削除
+
+```bash
+vcr secret remove --name <シークレット名>
+# または
+vcr secret rm --name <シークレット名>
+```
+
+#### シークレット命名規則
+
+- 英数字とアンダースコアのみ使用可能
+- 数字で始めることはできない
+- 大文字・小文字は区別される
+- アカウント内で一意である必要がある
 
 ### パスワード総当たり対策
 
