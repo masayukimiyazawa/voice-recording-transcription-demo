@@ -24,12 +24,124 @@ Vonage LVN（仮想番号）経由で着信を受け付け、自動応答メッ�
 
 ## セットアップ
 
-### 1. クローンとインストール
+### 1. クローンとインストール（既存リポジトリの場合）
 
 ```bash
 git clone <リポジトリURL>
 cd vonage-call-proxy
 npm install
+```
+
+### 1. package.json の作成（スクラッチから新規プロジェクトを作る場合）
+
+VCR プロジェクトをゼロから作成する場合は、以下の手順で `package.json` を生成します。
+
+#### ステップ1: `npm init` でベースを生成
+
+```bash
+mkdir my-vcr-app
+cd my-vcr-app
+npm init -y
+```
+
+または対話式で項目を入力しながら生成する場合：
+
+```bash
+npm init
+```
+
+#### ステップ2: VCR 用に `package.json` を編集
+
+生成された `package.json` をテキストエディタで開き、VCR デプロイに必要な項目を追加・修正します。主な変更点は以下の通りです：
+
+| 項目 | 設定値 | 説明 |
+|------|--------|------|
+| `"type"` | `"module"` | ESM モジュールとして動作（VCR ランタイムで推奨） |
+| `"engines"` | `{ "node": ">=24.0.0" }` | Node.js 24 以上を必須とする |
+| `"main"` | `"dist/index.js"` | VCR インスタンス起動時のエントリーポイント |
+| `"scripts.build"` | `"tsc"` | VCR ビルドスクリプトから呼ばれる TypeScript コンパイル |
+| `"scripts.start"` | `"node dist/index.js"` | アプリケーション起動コマンド |
+
+#### ステップ3: 依存関係をインストール
+
+VCR で必要なパッケージをインストールします。インストール時に `package.json` と `package-lock.json` が自動更新されます：
+
+```bash
+# 実行時に必要な依存関係
+npm install express mongoose @vonage/server-sdk @vonage/vcr-sdk dotenv ejs bcrypt jsonwebtoken express-session
+
+# 開発時にのみ必要な依存関係
+npm install -D typescript ts-node @types/node @types/express @types/bcrypt @types/express-session @types/jest @types/supertest @typescript-eslint/eslint-plugin @typescript-eslint/parser eslint eslint-config-prettier eslint-plugin-prettier jest supertest ts-jest prettier
+```
+
+#### 完成した `package.json` の例
+
+```json
+{
+  "name": "vonage-call-proxy",
+  "version": "1.0.0",
+  "description": "Vonage Call Proxy service",
+  "main": "dist/index.js",
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "node --loader ts-node/esm src/index.ts",
+    "test": "jest",
+    "lint": "eslint 'src/**/*.{ts,tsx}'",
+    "typecheck": "tsc --noEmit",
+    "vcr:deploy": "vcr deploy && node scripts/apply-vonage-webhooks.mjs",
+    "vcr:deploy:prod": "vcr deploy --filename production.yml && node scripts/apply-vonage-webhooks.mjs",
+    "check:vonage-key": "node scripts/check-vonage-key.mjs",
+    "vonage:webhooks": "node scripts/apply-vonage-webhooks.mjs",
+    "vonage:webhooks:check": "node scripts/apply-vonage-webhooks.mjs --check"
+  },
+  "dependencies": {
+    "@vonage/server-sdk": "^3.13.0",
+    "@vonage/vcr-sdk": "^2.0.0",
+    "bcrypt": "^5.1.1",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "express-session": "^1.17.3",
+    "jsonwebtoken": "^9.0.0",
+    "mongoose": "^8.4.0"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/dotenv": "^8.2.0",
+    "@types/express": "^4.17.21",
+    "@types/express-session": "^1.17.11",
+    "@types/jest": "^29.5.12",
+    "@types/mongoose": "^5.11.97",
+    "@types/node": "^24.0.0",
+    "@types/supertest": "^6.0.2",
+    "@typescript-eslint/eslint-plugin": "^8.6.0",
+    "@typescript-eslint/parser": "^8.6.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "jest": "^29.7.0",
+    "prettier": "^3.2.5",
+    "supertest": "^6.3.4",
+    "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  }
+}
+```
+
+#### 補足: `package.json` を変更した場合の VCR デプロイ
+
+`package.json` の依存関係を変更した場合は、**VCR デプロイ前に `package-lock.json` を同期**してください。同期されていないと VCR ビルド時の `npm ci` でエラーになります：
+
+```bash
+npm install
+# package-lock.json が更新されたことを確認
+npm run vcr:deploy
 ```
 
 ### 2. 環境設定
