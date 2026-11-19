@@ -14,7 +14,7 @@ Vonage LVN（仮想番号）経由で着信を受け付け、自動応答メッ�
 
 ## 事前準備
 
-- Node.js 22 LTS 以降（VCR SDK >= 2.1.0 では必須）
+- Node.js 24 以降（VCR SDK >= 2.1.0 では必須）
 - MongoDB Atlas クラスター（接続URI）
 - Vonage アカウント（以下が必要）
   - プロビジョニング済みのVonage LVN（仮想番号）

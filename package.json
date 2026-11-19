@@ -4,6 +4,9 @@
   "description": "Vonage Call Proxy service",
   "main": "dist/index.js",
   "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
@@ -36,7 +39,7 @@
     "@types/express-session": "^1.17.11",
     "@types/jest": "^29.5.12",
     "@types/mongoose": "^5.11.97",
-    "@types/node": "^20.14.2",
+    "@types/node": "^24.0.0",
     "@types/supertest": "^6.0.2",
     "@typescript-eslint/eslint-plugin": "^8.6.0",
     "@typescript-eslint/parser": "^8.6.0",
