@@ -164,12 +164,13 @@ vcr app create --voice --messages --name vonage-call-proxy-dev
 ```
 出力された **Application ID** を控えておきます（`vcr.yml` とシークレットに設定します）。
 
-#### ステップ3: `vcr.yml` の `application-id` と `WEBHOOK_URL` を更新
+#### ステップ3: `vcr.yml` の `runtime`、`application-id` と `WEBHOOK_URL` を更新
 
-`vcr.yml` を編集し、以下の2箇所を作成した Application ID とデプロイ先URLに書き換えます：
+`vcr.yml` を編集し、以下の3箇所を作成した Application ID とデプロイ先URLに書き換えます。Node.js 24 を使用するため `runtime` は `nodejs24` を指定してください：
 
 ```yaml
 instance:
+  runtime: nodejs24
   application-id: "<作成したApplication ID>"
   ...
   environment:
@@ -219,6 +220,15 @@ WEBHOOK_URL=https://neru-c30214a9-vonage-call-proxy-dev.apse1.runtime.vonage.clo
 ```
 
 #### ステップ6: デプロイ実行
+
+`package.json` を変更した場合（依存関係の追加・削除、バージョン変更など）、**必ず `package-lock.json` を同期**してからデプロイしてください。同期されていないと VCR ビルド時の `npm ci` でエラーになります：
+
+```bash
+npm install
+# package-lock.json が更新されたことを確認
+```
+
+デプロイを実行します：
 
 ```bash
 npm run vcr:deploy
